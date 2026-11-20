@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Estacionamento Inteligente - 3 Andares</title>
+  <title>Monitoramento de Vagas</title>
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { margin: 0; display: flex; min-height: 100vh; background-color: #95a5a6; color: #fff; }
@@ -101,12 +101,12 @@
     .livre .legenda { background-color: #2ecc71; color: #000; }
     .ocupada .legenda { background-color: #e74c3c; color: #fff; }
 
-    /* MODAL (JANELA DE RESERVA / ERRO) */
+    /* MODAL (JANELA DE RESERVA / COBRANÇA / ERRO) */
     .modal-bg {
       display: none;
       position: fixed;
       inset: 0;
-      background-color: rgba(0,0,0,0.7);
+      background-color: rgba(0,0,0,0.75);
       justify-content: center;
       align-items: center;
       z-index: 100;
@@ -117,7 +117,7 @@
       padding: 25px;
       border-radius: 10px;
       width: 90%;
-      max-width: 380px;
+      max-width: 390px;
       border: 2px solid #f1c40f;
       text-align: center;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
@@ -130,7 +130,26 @@
       border: none;
       font-size: 16px;
     }
-    .modal-btns { display: flex; gap: 10px; justify-content: center; }
+    .recibo {
+      background-color: #1e272e;
+      border: 1px dashed #f1c40f;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      text-align: left;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .valor-destaque {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2ecc71;
+      text-align: center;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #34495e;
+    }
+    .modal-btns { display: flex; gap: 10px; justify-content: center; margin-top: 15px; }
     .btn { padding: 10px 18px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
     .btn-confirmar { background-color: #2ecc71; color: #000; }
     .btn-liberar { background-color: #e74c3c; color: #fff; }
@@ -156,17 +175,17 @@
     <h2>🏢 Estacionamento</h2>
     
     <button class="menu-btn ativo" id="btn-andar1" onclick="mudarAndar(1)">
-      <span class="menu-titulo">1º Andar (Sensores)</span>
+      <span class="menu-titulo">1º Andar</span>
       <span class="badge-vagas badge-manutencao" id="cont-andar1">Verificando...</span>
     </button>
 
     <button class="menu-btn" id="btn-andar2" onclick="mudarAndar(2)">
-      <span class="menu-titulo">2º Andar (Manual)</span>
+      <span class="menu-titulo">2º Andar</span>
       <span class="badge-vagas" id="cont-andar2">10 livres</span>
     </button>
 
     <button class="menu-btn" id="btn-andar3" onclick="mudarAndar(3)">
-      <span class="menu-titulo">3º Andar (Manual)</span>
+      <span class="menu-titulo">3º Andar</span>
       <span class="badge-vagas" id="cont-andar3">10 livres</span>
     </button>
   </aside>
@@ -174,13 +193,12 @@
   <!-- TELAS DOS ANDARES -->
   <main class="main-content">
 
-    <!-- 1º ANDAR -->
+    <!-- 1º ANDAR (EXCLUSIVO SENSORES) -->
     <section id="tela-andar1" class="andar-container ativo">
-      <h1>1º Andar</h1>
+      <h1>1º Andar </h1>
       <p>Vagas exclusivas.</p>
       <div class="pista">
         
-        <!-- Aviso quando o ESP32 desconectar -->
         <div class="overlay-manutencao visivel" id="aviso-manutencao">
           <div style="font-size: 50px;">🚧</div>
           <h2>1º Andar em Manutenção</h2>
@@ -210,34 +228,40 @@
       </div>
     </section>
 
-    <!-- 2º ANDAR -->
+    <!-- 2º ANDAR (10 VAGAS MANUAIS) -->
     <section id="tela-andar2" class="andar-container">
       <h1>2º Andar — Reserva de Vagas</h1>
-      <p>Clique em uma vaga livre para estacionar ou em uma ocupada para liberar.</p>
+      <p>Clique em uma vaga livre para estacionar ou em uma ocupada para pagar e sair.</p>
       <div class="pista" id="pista-andar2"></div>
     </section>
 
-    <!-- 3º ANDAR -->
+    <!-- 3º ANDAR (10 VAGAS MANUAIS) -->
     <section id="tela-andar3" class="andar-container">
       <h1>3º Andar — Reserva de Vagas</h1>
-      <p>Clique em uma vaga livre para estacionar ou em uma ocupada para liberar.</p>
+      <p>Clique em uma vaga livre para estacionar ou em uma ocupada para pagar e sair.</p>
       <div class="pista" id="pista-andar3"></div>
     </section>
 
   </main>
 
-  <!-- MODAL PARA RESERVAR / LIBERAR / ERRO -->
+  <!-- MODAL PARA RESERVAR / COBRAR / ERRO -->
   <div class="modal-bg" id="modal">
     <div class="modal-box">
       <h3 id="modal-titulo">Reservar Vaga</h3>
-      <p id="modal-texto">Digite seu nome para ocupar esta vaga:</p>
+      <div id="modal-texto">Digite seu nome para ocupar esta vaga:</div>
       <input type="text" id="input-nome" placeholder="Seu nome (ex: João Silva)" maxlength="18">
       <div class="modal-btns" id="modal-botoes"></div>
     </div>
   </div>
 
   <script>
-    // Suas credenciais do Firebase
+    // ==========================================
+    // CONFIGURAÇÃO DE TARIFAS (EDITE AQUI)
+    // ==========================================
+    const VALOR_HORA = 12.00;   // R$ 12,00 por hora (R$ 0,20 por minuto)
+    const VALOR_MINIMO = 2.00;  // Tarifa mínima ao estacionar
+
+    // Credenciais do Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAUsJS77zBp2cPP2sAeb2UN5Lre7_DtdPU",
       authDomain: "estacionamento-73497.firebaseapp.com",
@@ -293,14 +317,12 @@
       const dados = snapshot.val();
       if (!dados) return;
 
-      // Verifica se o heartbeat mudou (indica que o ESP32 enviou dados novos)
       if (dados.heartbeat !== ultimoHeartbeat) {
         ultimoHeartbeat = dados.heartbeat;
         horaUltimoSinal = Date.now();
         definirStatusESP(true);
       }
 
-      // Atualiza as 3 vagas do 1º andar
       const v1 = Boolean(dados.vaga1);
       const v2 = Boolean(dados.vaga2);
       const v3 = Boolean(dados.vaga3);
@@ -315,7 +337,6 @@
       }
     });
 
-    // Checa a cada 2 segundos se o ESP32 parou de responder (> 6 segundos)
     setInterval(() => {
       if (Date.now() - horaUltimoSinal > 6000) {
         definirStatusESP(false);
@@ -350,11 +371,15 @@
         let vagasLivres = 0;
 
         for (let i = 1; i <= 10; i++) {
-          const ocupante = dados[`vaga${i}`]; // Guarda o nome da pessoa ou null
-          const estaOcupada = Boolean(ocupante);
+          const registro = dados[`vaga${i}`]; // Objeto { nome, entrada } ou null
+          const estaOcupada = Boolean(registro);
           if (!estaOcupada) vagasLivres++;
 
-          atualizarVisualVaga(andar, i, estaOcupada, ocupante || "");
+          const nomeMotorista = registro
+            ? (typeof registro === 'object' ? registro.nome : registro)
+            : "";
+
+          atualizarVisualVaga(andar, i, estaOcupada, nomeMotorista);
         }
 
         document.getElementById(`cont-andar${andar}`).innerText = `${vagasLivres} livres`;
@@ -383,7 +408,47 @@
     }
 
     // ==========================================
-    // 5. LÓGICA DE RESERVA SEM CONFLITO (TRANSACTION)
+    // 5. CÁLCULO DE TEMPO E COBRANÇA
+    // ==========================================
+    function calcularCobranca(timestampEntrada) {
+      const agora = Date.now();
+      const diffMs = Math.max(0, agora - timestampEntrada);
+
+      const totalSegundos = Math.floor(diffMs / 1000);
+      const totalMinutos = Math.floor(totalSegundos / 60);
+      const horas = Math.floor(totalMinutos / 60);
+      const minutosRestantes = totalMinutos % 60;
+
+      // Formata o texto do tempo estacionado
+      let tempoFormatado = "";
+      if (totalSegundos < 60) {
+        tempoFormatado = `${totalSegundos} seg`;
+      } else if (horas === 0) {
+        tempoFormatado = `${totalMinutos} min`;
+      } else {
+        tempoFormatado = `${horas}h ${minutosRestantes}min`;
+      }
+
+      // Calcula o valor proporcional (mínimo de 1 minuto cobrado)
+      const minutosCobrados = Math.max(1, Math.ceil(diffMs / 60000));
+      const valorCalculado = (minutosCobrados / 60) * VALOR_HORA;
+      const valorFinal = Math.max(VALOR_MINIMO, valorCalculado);
+
+      const valorFormatado = valorFinal.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
+
+      const horaEntradaFormatada = new Date(timestampEntrada).toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      return { tempoFormatado, valorFormatado, horaEntradaFormatada };
+    }
+
+    // ==========================================
+    // 6. RESERVA E LIBERAÇÃO COM RECIBO
     // ==========================================
     const modal = document.getElementById('modal');
     const modalTitulo = document.getElementById('modal-titulo');
@@ -392,12 +457,12 @@
     const modalBotoes = document.getElementById('modal-botoes');
 
     function clicarVaga(andar, num) {
-      const ocupanteAtual = estadoManual[`andar${andar}`][`vaga${num}`];
+      const registro = estadoManual[`andar${andar}`][`vaga${num}`];
 
-      if (!ocupanteAtual) {
-        // Vaga está LIVRE -> Abrir tela para colocar o nome
+      if (!registro) {
+        // Vaga LIVRE -> Solicitar nome
         modalTitulo.innerText = `Reservar Vaga ${num} (${andar}º Andar)`;
-        modalTexto.innerText = "Digite seu nome para estacionar nesta vaga:";
+        modalTexto.innerHTML = `<p>Tarifa: <strong>R$ ${VALOR_HORA.toFixed(2).replace('.', ',')}/hora</strong> (mínimo R$ ${VALOR_MINIMO.toFixed(2).replace('.', ',')}).<br>Digite seu nome para estacionar:</p>`;
         inputNome.style.display = "block";
         inputNome.value = "";
         modalBotoes.innerHTML = `
@@ -407,13 +472,25 @@
         modal.classList.add('aberto');
         inputNome.focus();
       } else {
-        // Vaga está OCUPADA -> Perguntar se deseja liberar
-        modalTitulo.innerText = `Vaga ${num} (${andar}º Andar)`;
-        modalTexto.innerText = `Ocupada por: ${ocupanteAtual}. Deseja retirar o veículo e liberar a vaga?`;
+        // Vaga OCUPADA -> Calcular valor devido e exibir recibo
+        const nome = typeof registro === 'object' ? registro.nome : registro;
+        const entrada = (typeof registro === 'object' && registro.entrada) ? registro.entrada : Date.now();
+        const { tempoFormatado, valorFormatado, horaEntradaFormatada } = calcularCobranca(entrada);
+
+        modalTitulo.innerText = `Saída — Vaga ${num} (${andar}º Andar)`;
+        modalTexto.innerHTML = `
+          <div class="recibo">
+            <div><strong>Motorista:</strong> ${nome}</div>
+            <div><strong>Entrada às:</strong> ${horaEntradaFormatada}</div>
+            <div><strong>Permanência:</strong> ${tempoFormatado}</div>
+            <div class="valor-destaque">Total a pagar: ${valorFormatado}</div>
+          </div>
+          <p style="font-size: 14px; color: #dcdde1;">Confirme o pagamento para liberar a vaga:</p>
+        `;
         inputNome.style.display = "none";
         modalBotoes.innerHTML = `
-          <button class="btn btn-liberar" onclick="liberarVaga(${andar}, ${num})">Liberar Vaga</button>
-          <button class="btn btn-cancelar" onclick="fecharModal()">Fechar</button>
+          <button class="btn btn-confirmar" onclick="liberarVaga(${andar}, ${num}, '${nome.replace(/'/g, "\\'")}', '${valorFormatado}')">Pagar e Liberar</button>
+          <button class="btn btn-cancelar" onclick="fecharModal()">Voltar</button>
         `;
         modal.classList.add('aberto');
       }
@@ -428,19 +505,22 @@
 
       const refVaga = database.ref(`andar${andar}/vaga${num}`);
 
-      // Transaction garante no servidor do Firebase que ninguém pegou a vaga milissegundos antes
       refVaga.transaction((valorAtual) => {
         if (valorAtual === null) {
-          return nome; // Vaga realmente livre no servidor: grava o nome
+          // Salva o nome e o timestamp exato da entrada
+          return {
+            nome: nome,
+            entrada: Date.now()
+          };
         } else {
-          return; // Aborta a operação se já existir um nome lá
+          return; // Aborta se outra pessoa ocupou no mesmo instante
         }
       }, (error, committed, snapshot) => {
         if (error) {
           mostrarErro("Erro de conexão ao tentar reservar a vaga.");
         } else if (!committed) {
-          // Alguém reservou exatamente ao mesmo tempo!
-          const quemPegou = snapshot.val();
+          const dadosAtuais = snapshot.val();
+          const quemPegou = (dadosAtuais && typeof dadosAtuais === 'object') ? dadosAtuais.nome : dadosAtuais;
           mostrarErro(`Ops! A vaga ${num} acabou de ser ocupada por "${quemPegou}". Escolha outra vaga.`);
         } else {
           fecharModal();
@@ -448,14 +528,18 @@
       });
     }
 
-    function liberarVaga(andar, num) {
+    function liberarVaga(andar, num, nome, valorFormatado) {
       database.ref(`andar${andar}/vaga${num}`).remove();
-      fecharModal();
+      
+      modalTitulo.innerText = "✅ Saída Liberada";
+      modalTexto.innerHTML = `<p>Pagamento de <strong>${valorFormatado}</strong> confirmado para <strong>${nome}</strong>.<br>Obrigado por utilizar o estacionamento!</p>`;
+      inputNome.style.display = "none";
+      modalBotoes.innerHTML = `<button class="btn btn-cancelar" onclick="fecharModal()">Fechar</button>`;
     }
 
     function mostrarErro(mensagem) {
       modalTitulo.innerText = "⚠️ Vaga Indisponível";
-      modalTexto.innerText = mensagem;
+      modalTexto.innerHTML = `<p>${mensagem}</p>`;
       inputNome.style.display = "none";
       modalBotoes.innerHTML = `<button class="btn btn-cancelar" onclick="fecharModal()">Entendi</button>`;
       modal.classList.add('aberto');
